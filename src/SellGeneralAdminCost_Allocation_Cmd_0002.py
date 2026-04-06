@@ -6721,22 +6721,6 @@ def create_pj_summary_pl_cr_manhour_all_project_excel(
         iSeconds: int = int(objMatch.group(3))
         return (iHours * 3600 + iMinutes * 60 + iSeconds) / 86400.0
 
-    def normalize_sheet_title(pszSheetTitle: str, objUsedTitles: set[str]) -> str:
-        pszNormalized: str = re.sub(r'[:\\\\/?*\\[\\]]', "_", pszSheetTitle)
-        pszNormalized = pszNormalized.replace("\n", " ").replace("\r", " ").strip()
-        if pszNormalized == "":
-            pszNormalized = "Sheet"
-        pszBase: str = pszNormalized[:31]
-        pszCandidate: str = pszBase
-        iSuffix: int = 1
-        while pszCandidate in objUsedTitles:
-            pszSuffixText: str = f"_{iSuffix}"
-            iAllowedLength: int = max(1, 31 - len(pszSuffixText))
-            pszCandidate = pszBase[:iAllowedLength] + pszSuffixText
-            iSuffix += 1
-        objUsedTitles.add(pszCandidate)
-        return pszCandidate
-
     objValidInputs: List[Tuple[str, str]] = [
         (pszProjectName, pszInputPath)
         for pszProjectName, pszInputPath in objProjectInputs
@@ -6754,7 +6738,6 @@ def create_pj_summary_pl_cr_manhour_all_project_excel(
 
     objWorkbook = load_workbook(pszTemplatePath)
     objTemplateSheet = objWorkbook.worksheets[0]
-    objUsedTitles: set[str] = set()
 
     for iIndex, objProjectInput in enumerate(objValidInputs):
         pszProjectName, pszInputPath = objProjectInput
@@ -6762,7 +6745,7 @@ def create_pj_summary_pl_cr_manhour_all_project_excel(
             objSheet = objTemplateSheet
         else:
             objSheet = objWorkbook.copy_worksheet(objTemplateSheet)
-        objSheet.title = normalize_sheet_title(pszProjectName, objUsedTitles)
+        objSheet.title = pszProjectName
         objRows = read_tsv_rows(pszInputPath)
         for iRowIndex, objRow in enumerate(objRows, start=1):
             pszRowLabel: str = objRow[0] if len(objRow) >= 1 else ""
