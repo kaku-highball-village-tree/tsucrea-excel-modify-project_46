@@ -4388,6 +4388,7 @@ def create_step0007_pl_cr(
         os.makedirs(pszStep0009Directory, exist_ok=True)
         os.makedirs(pszStep0010Directory, exist_ok=True)
         os.makedirs(pszStep0011Directory, exist_ok=True)
+        objStep0011ProjectInputs: List[Tuple[str, str]] = []
         objSingleHeaderRow: List[str] = objSingleFinalRows[0]
         objCumulativeHeaderRow: List[str] = objCumulativeFinalRows[0]
         iMaxColumns: int = max(len(objSingleHeaderRow), len(objCumulativeHeaderRow))
@@ -4435,11 +4436,16 @@ def create_step0007_pl_cr(
                     pszStep0011Path = os.path.join(pszStep0011Directory, pszStep0011Name)
                     objStep0011Rows = build_step0011_rows(objStep0010Rows)
                     write_tsv_rows(pszStep0011Path, objStep0011Rows)
+                    objStep0011ProjectInputs.append((pszColumnName, pszStep0011Path))
                     create_pj_summary_pl_cr_manhour_excel(
                         pszDirectory,
                         pszColumnName,
                         pszStep0011Path,
                     )
+        create_pj_summary_pl_cr_manhour_all_project_excel(
+            pszDirectory,
+            objStep0011ProjectInputs,
+        )
 
     move_files_to_temp(
         [
@@ -6687,6 +6693,101 @@ def create_pj_summary_pl_cr_manhour_excel(
     pszOutputPath: str = os.path.join(
         pszTargetDirectory,
         f"PJサマリ_単・累計_{pszProjectName}.xlsx",
+    )
+    objWorkbook.save(pszOutputPath)
+    if EXECUTION_ROOT_DIRECTORY:
+        pszProjectProfitDirectory = os.path.join(
+            EXECUTION_ROOT_DIRECTORY,
+            "プロジェクト損益",
+        )
+        os.makedirs(pszProjectProfitDirectory, exist_ok=True)
+        shutil.copy2(
+            pszOutputPath,
+            os.path.join(pszProjectProfitDirectory, os.path.basename(pszOutputPath)),
+        )
+    return pszOutputPath
+
+
+def create_pj_summary_pl_cr_manhour_all_project_excel(
+    pszDirectory: str,
+    objProjectInputs: List[Tuple[str, str]],
+) -> Optional[str]:
+    def parse_h_mm_ss_to_excel_serial(pszTimeText: str) -> Optional[float]:
+        objMatch = re.fullmatch(r"(\d+):(\d{2}):(\d{2})", (pszTimeText or "").strip())
+        if objMatch is None:
+            return None
+        iHours: int = int(objMatch.group(1))
+        iMinutes: int = int(objMatch.group(2))
+        iSeconds: int = int(objMatch.group(3))
+        return (iHours * 3600 + iMinutes * 60 + iSeconds) / 86400.0
+
+    def normalize_sheet_title(pszSheetTitle: str, objUsedTitles: set[str]) -> str:
+        pszNormalized: str = re.sub(r'[:\\\\/?*\\[\\]]', "_", pszSheetTitle)
+        pszNormalized = pszNormalized.replace("\n", " ").replace("\r", " ").strip()
+        if pszNormalized == "":
+            pszNormalized = "Sheet"
+        pszBase: str = pszNormalized[:31]
+        pszCandidate: str = pszBase
+        iSuffix: int = 1
+        while pszCandidate in objUsedTitles:
+            pszSuffixText: str = f"_{iSuffix}"
+            iAllowedLength: int = max(1, 31 - len(pszSuffixText))
+            pszCandidate = pszBase[:iAllowedLength] + pszSuffixText
+            iSuffix += 1
+        objUsedTitles.add(pszCandidate)
+        return pszCandidate
+
+    objValidInputs: List[Tuple[str, str]] = [
+        (pszProjectName, pszInputPath)
+        for pszProjectName, pszInputPath in objProjectInputs
+        if os.path.isfile(pszInputPath)
+    ]
+    if not objValidInputs:
+        return None
+
+    pszTemplatePath: str = os.path.join(
+        os.path.dirname(__file__),
+        "TEMPLATE_PJサマリ_単月・累計_損益計算書・製造原価報告書・工数.xlsx",
+    )
+    if not os.path.isfile(pszTemplatePath):
+        return None
+
+    objWorkbook = load_workbook(pszTemplatePath)
+    objTemplateSheet = objWorkbook.worksheets[0]
+    objUsedTitles: set[str] = set()
+
+    for iIndex, objProjectInput in enumerate(objValidInputs):
+        pszProjectName, pszInputPath = objProjectInput
+        if iIndex == 0:
+            objSheet = objTemplateSheet
+        else:
+            objSheet = objWorkbook.copy_worksheet(objTemplateSheet)
+        objSheet.title = normalize_sheet_title(pszProjectName, objUsedTitles)
+        objRows = read_tsv_rows(pszInputPath)
+        for iRowIndex, objRow in enumerate(objRows, start=1):
+            pszRowLabel: str = objRow[0] if len(objRow) >= 1 else ""
+            for iColumnIndex, pszValue in enumerate(objRow, start=1):
+                objCellValue = parse_tsv_value_for_excel(pszValue)
+                objCell = objSheet.cell(
+                    row=iRowIndex,
+                    column=iColumnIndex,
+                    value=objCellValue,
+                )
+                if pszRowLabel == "工数行(h:mm:ss)" and iColumnIndex in (2, 5):
+                    objExcelTimeSerial = parse_h_mm_ss_to_excel_serial(pszValue)
+                    if objExcelTimeSerial is not None:
+                        objCell.value = objExcelTimeSerial
+                        objCell.number_format = "[h]:mm:ss"
+
+    pszTargetDirectory: str = os.path.join(
+        pszDirectory,
+        "PJサマリ",
+        "PJ別_損益計算書・製造原価報告書・工数",
+    )
+    os.makedirs(pszTargetDirectory, exist_ok=True)
+    pszOutputPath: str = os.path.join(
+        pszTargetDirectory,
+        "PJサマリ_単・累計_AllProject.xlsx",
     )
     objWorkbook.save(pszOutputPath)
     if EXECUTION_ROOT_DIRECTORY:
