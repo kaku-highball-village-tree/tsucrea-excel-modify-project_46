@@ -78,6 +78,8 @@ BUTTON_LABELS: Tuple[str, ...] = (
     "CP別経営管理用(計上グループ)",
     "PJ別損益計算書",
 )
+ALL_PROJECT_FILE_NAME: str = "PJサマリ_単・累計_AllProject.xlsx"
+ALL_PROJECT_SELECTION_TOKEN: str = "__ALLPROJECT__"
 
 
 def show_message_box(
@@ -231,12 +233,21 @@ def choose_project_pl_code(
         if not objSelection:
             return
         pszFileName = objListBox.get(objSelection[0])
+        if pszFileName == ALL_PROJECT_FILE_NAME:
+            objEntryVar.set("AllProject")
+            return
         pszCode = extract_project_code_from_file_name(pszFileName)
         if pszCode:
             objEntryVar.set(pszCode)
 
     def on_confirm() -> None:
-        pszCode = objEntryVar.get().strip().upper()
+        pszInputText = objEntryVar.get().strip()
+        if pszInputText in ("AllProject", "allproject", ALL_PROJECT_FILE_NAME):
+            objResult["code"] = ALL_PROJECT_SELECTION_TOKEN
+            objWindow.grab_release()
+            objWindow.destroy()
+            return
+        pszCode = pszInputText.upper()
         if not is_valid_project_code(pszCode):
             show_error_message_box(
                 "Error: PJコードの形式が正しくありません。\n"
@@ -493,6 +504,19 @@ def handle_project_pl_left_down() -> None:
         return
     pszProjectCode = choose_project_pl_code(pszProjectDirectory)
     if pszProjectCode is None:
+        return
+    if pszProjectCode == ALL_PROJECT_SELECTION_TOKEN:
+        pszAllProjectPath: str = os.path.join(
+            pszProjectDirectory,
+            ALL_PROJECT_FILE_NAME,
+        )
+        if not os.path.isfile(pszAllProjectPath):
+            show_error_message_box(
+                "Error: ファイルが見つかりません。\n" + pszAllProjectPath,
+                "SellGeneralAdminCost_Allocation_DnD",
+            )
+            return
+        os.startfile(pszAllProjectPath)
         return
     pszPrefix = f"PJサマリ_単・累計_{pszProjectCode}"
     objCandidates = [
