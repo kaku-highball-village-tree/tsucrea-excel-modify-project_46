@@ -502,41 +502,17 @@ def handle_project_pl_left_down() -> None:
             "SellGeneralAdminCost_Allocation_DnD",
         )
         return
-    pszProjectCode = choose_project_pl_code(pszProjectDirectory)
-    if pszProjectCode is None:
-        return
-    if pszProjectCode == ALL_PROJECT_SELECTION_TOKEN:
-        pszAllProjectPath: str = os.path.join(
-            pszProjectDirectory,
-            ALL_PROJECT_FILE_NAME,
-        )
-        if not os.path.isfile(pszAllProjectPath):
-            show_error_message_box(
-                "Error: ファイルが見つかりません。\n" + pszAllProjectPath,
-                "SellGeneralAdminCost_Allocation_DnD",
-            )
-            return
-        os.startfile(pszAllProjectPath)
-        return
-    pszPrefix = f"PJサマリ_単・累計_{pszProjectCode}"
-    objCandidates = [
-        pszName
-        for pszName in os.listdir(pszProjectDirectory)
-        if pszName.startswith(pszPrefix) and pszName.endswith(".xlsx")
-    ]
-    if not objCandidates:
-        pszTargetPath = os.path.join(
-            pszProjectDirectory,
-            f"PJサマリ_単・累計_{pszProjectCode}.xlsx",
-        )
+    pszAllProjectPath: str = os.path.join(
+        pszProjectDirectory,
+        ALL_PROJECT_FILE_NAME,
+    )
+    if not os.path.isfile(pszAllProjectPath):
         show_error_message_box(
-            "Error: ファイルが見つかりません。\n" + pszTargetPath,
+            "Error: ファイルが見つかりません。\n" + pszAllProjectPath,
             "SellGeneralAdminCost_Allocation_DnD",
         )
         return
-    objCandidates.sort()
-    pszTargetPath = os.path.join(pszProjectDirectory, objCandidates[0])
-    os.startfile(pszTargetPath)
+    os.startfile(pszAllProjectPath)
 
 
 def handle_project_pl_right_down() -> None:
