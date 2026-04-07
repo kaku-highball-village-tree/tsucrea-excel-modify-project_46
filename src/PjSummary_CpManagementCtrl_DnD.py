@@ -530,7 +530,41 @@ def handle_project_pl_right_down() -> None:
             "SellGeneralAdminCost_Allocation_DnD",
         )
         return
-    os.startfile(pszProjectDirectory)
+    pszProjectCode = choose_project_pl_code(pszProjectDirectory)
+    if pszProjectCode is None:
+        return
+    if pszProjectCode == ALL_PROJECT_SELECTION_TOKEN:
+        pszAllProjectPath: str = os.path.join(
+            pszProjectDirectory,
+            ALL_PROJECT_FILE_NAME,
+        )
+        if not os.path.isfile(pszAllProjectPath):
+            show_error_message_box(
+                "Error: ファイルが見つかりません。\n" + pszAllProjectPath,
+                "SellGeneralAdminCost_Allocation_DnD",
+            )
+            return
+        os.startfile(pszAllProjectPath)
+        return
+    pszPrefix = f"PJサマリ_単・累計_{pszProjectCode}"
+    objCandidates = [
+        pszName
+        for pszName in os.listdir(pszProjectDirectory)
+        if pszName.startswith(pszPrefix) and pszName.endswith(".xlsx")
+    ]
+    if not objCandidates:
+        pszTargetPath = os.path.join(
+            pszProjectDirectory,
+            f"PJサマリ_単・累計_{pszProjectCode}.xlsx",
+        )
+        show_error_message_box(
+            "Error: ファイルが見つかりません。\n" + pszTargetPath,
+            "SellGeneralAdminCost_Allocation_DnD",
+        )
+        return
+    objCandidates.sort()
+    pszTargetPath = os.path.join(pszProjectDirectory, objCandidates[0])
+    os.startfile(pszTargetPath)
 
 
 def choose_pj_income_statement_file(
@@ -1017,7 +1051,7 @@ def handle_action_button_right_click(iButtonId: int) -> None:
     elif iButtonId == BUTTON_ID_BASE + 2:
         handle_company_margin_rank_right_down()
     elif iButtonId == BUTTON_ID_BASE + 3:
-        handle_project_pl_left_down()
+        handle_project_pl_right_down()
     elif iButtonId == BUTTON_ID_BASE + 4:
         handle_group_pl_right_down()
     elif iButtonId == BUTTON_ID_BASE + 5:
