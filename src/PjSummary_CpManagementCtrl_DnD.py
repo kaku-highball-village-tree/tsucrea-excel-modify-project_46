@@ -1041,7 +1041,7 @@ def handle_action_button_right_click(iButtonId: int) -> None:
     elif iButtonId == BUTTON_ID_BASE + 2:
         handle_company_margin_rank_right_down()
     elif iButtonId == BUTTON_ID_BASE + 3:
-        handle_project_pl_right_down()
+        handle_project_pl_left_down()
     elif iButtonId == BUTTON_ID_BASE + 4:
         handle_group_pl_right_down()
     elif iButtonId == BUTTON_ID_BASE + 5:
